@@ -1,0 +1,13 @@
+#!/bin/sh
+#
+# Guard against accidentally committing local secrets.
+
+blocked="$(git diff --cached --name-only | grep -E '(^|/)(\.env|secrets\.yaml|\.kis_token.*)$' || true)"
+
+if [ -n "$blocked" ]; then
+  echo "pre-commit: refusing to commit secret/local config files:" >&2
+  echo "$blocked" >&2
+  exit 1
+fi
+
+exit 0

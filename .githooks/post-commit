@@ -1,0 +1,29 @@
+#!/bin/sh
+#
+# Push successful local commits to the configured GitHub remote.
+# Git ignores this file unless core.hooksPath points to .githooks.
+
+remote="${AUTO_PUSH_REMOTE:-origin}"
+branch="$(git symbolic-ref --quiet --short HEAD 2>/dev/null || true)"
+
+if [ -z "$branch" ]; then
+  echo "auto-push: detached HEAD; skipping push." >&2
+  exit 0
+fi
+
+if ! git remote get-url "$remote" >/dev/null 2>&1; then
+  echo "auto-push: remote '$remote' is not configured; skipping push." >&2
+  exit 0
+fi
+
+if git rev-parse --abbrev-ref --symbolic-full-name "@{u}" >/dev/null 2>&1; then
+  git push "$remote" "$branch" || {
+    echo "auto-push: push failed. Commit was created locally." >&2
+    exit 0
+  }
+else
+  git push -u "$remote" "$branch" || {
+    echo "auto-push: initial push failed. Commit was created locally." >&2
+    exit 0
+  }
+fi
