@@ -1,0 +1,22 @@
+# 실제 보유 내역 — 매매 후 직접 수정
+# market: KR (국내) | US (미국)
+# 여러 증권사 혼합 사용 가능 (broker 필드는 참고용)
+
+positions:
+  - code: "005930"
+    name: "삼성전자"
+    market: KR
+    quantity: 0
+    avg_price: 0
+    broker: ""
+
+  # - code: "AAPL"
+  #   name: "Apple"
+  #   market: US
+  #   quantity: 0
+  #   avg_price: 0.0
+  #   broker: ""
+
+cash:
+  KRW: 0
+  USD: 0

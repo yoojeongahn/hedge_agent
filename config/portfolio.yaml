@@ -1,33 +1,36 @@
 # 목표 포트폴리오 정의
-# 비중 합계는 100%가 되어야 함 (현금 포함시 cash 항목 추가)
+# 비중 합계는 100%가 되어야 함 (현금 포함)
+# market 필드: KR (국내) | US (미국), 미입력 시 KR로 간주
 
 target_weights:
-  "005930": # 삼성전자
+  "005930":
     name: "삼성전자"
+    market: KR
     target_pct: 25.0
     rebalance_band: 5.0  # 25±5% 벗어나면 알람
 
-  "000660": # SK하이닉스
+  "000660":
     name: "SK하이닉스"
+    market: KR
     target_pct: 15.0
     rebalance_band: 5.0
 
-  "035720": # 카카오
+  "035720":
     name: "카카오"
+    market: KR
     target_pct: 10.0
     rebalance_band: 3.0
 
-  "373220": # LG에너지솔루션
+  "373220":
     name: "LG에너지솔루션"
+    market: KR
     target_pct: 10.0
     rebalance_band: 3.0
 
 cash:
   target_pct: 40.0
-  min_pct: 20.0  # 현금 비중이 이보다 낮으면 경고
 
 # 알람 규칙
 alerts:
-  daily_loss_pct: -3.0       # 일일 손실 -3% 이하시 알람
+  daily_loss_pct: -3.0       # 전일 대비 포트폴리오 손실 -3% 이하시 알람
   position_loss_pct: -10.0   # 개별 종목 평가손실 -10% 이하시 알람
-  volatility_spike: 2.0      # 20일 변동성 대비 2배 초과시 알람
