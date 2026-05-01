@@ -1,6 +1,6 @@
 # Phase 1 모니터링 파이프라인 Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** holdings.yaml로 수동 관리하는 KR+US 혼합 포트폴리오를 매일 08:00(US 풀 리포트)과 16:30(KR 간략 리포트)에 자동 모니터링하고 텔레그램으로 Claude 리밸런싱 가이드를 전송한다.
 
@@ -118,7 +118,7 @@ class RebalanceDelta:
     current_price: float   # 원화폐 기준
 ```
 
-- [ ] **Step 1: storage.py 수정을 위한 테스트 작성**
+- [x] **Step 1: storage.py 수정을 위한 테스트 작성**
 
 `tests/test_storage_snapshot.py` 생성:
 
@@ -156,14 +156,14 @@ def test_save_and_retrieve(tmp_path, monkeypatch):
     assert ts == "2026-05-01T16:30:00"
 ```
 
-- [ ] **Step 2: 테스트 실패 확인**
+- [x] **Step 2: 테스트 실패 확인**
 
 ```
 pytest tests/test_storage_snapshot.py -v
 ```
 Expected: ImportError (PortfolioSnapshot 미정의)
 
-- [ ] **Step 3: core/pricer.py에 dataclass 작성**
+- [x] **Step 3: core/pricer.py에 dataclass 작성**
 
 ```python
 # core/pricer.py
@@ -202,7 +202,7 @@ class PortfolioSnapshot:
     total_pnl_pct: float
 ```
 
-- [ ] **Step 4: core/storage.py 수정**
+- [x] **Step 4: core/storage.py 수정**
 
 기존 `AccountSnapshot` import 를 `PortfolioSnapshot` 으로 교체하고 스키마에 `usd_krw_rate` 컬럼 추가:
 
@@ -299,14 +299,14 @@ def prev_total_eval_krw() -> float | None:
     return float(row["total_eval"]) if row else None
 ```
 
-- [ ] **Step 5: 테스트 통과 확인**
+- [x] **Step 5: 테스트 통과 확인**
 
 ```
 pytest tests/test_storage_snapshot.py -v
 ```
 Expected: PASS
 
-- [ ] **Step 6: 커밋**
+- [x] **Step 6: 커밋**
 
 ```bash
 git add core/pricer.py core/storage.py tests/test_storage_snapshot.py
@@ -321,7 +321,7 @@ git commit -m "feat: replace AccountSnapshot with PortfolioSnapshot in storage"
 - Modify: `core/holdings.py`
 - Create: `tests/test_holdings.py`
 
-- [ ] **Step 1: 테스트 작성**
+- [x] **Step 1: 테스트 작성**
 
 ```python
 # tests/test_holdings.py
@@ -384,14 +384,14 @@ def test_missing_required_field_raises(tmp_path):
         load_holdings(f)
 ```
 
-- [ ] **Step 2: 테스트 실패 확인**
+- [x] **Step 2: 테스트 실패 확인**
 
 ```
 pytest tests/test_holdings.py -v
 ```
 Expected: ImportError
 
-- [ ] **Step 3: core/holdings.py 구현**
+- [x] **Step 3: core/holdings.py 구현**
 
 ```python
 # core/holdings.py
@@ -442,14 +442,14 @@ def load_holdings(path: Path = CONFIG_PATH) -> Holdings:
     )
 ```
 
-- [ ] **Step 4: 테스트 통과 확인**
+- [x] **Step 4: 테스트 통과 확인**
 
 ```
 pytest tests/test_holdings.py -v
 ```
 Expected: 3 passed
 
-- [ ] **Step 5: 커밋**
+- [x] **Step 5: 커밋**
 
 ```bash
 git add core/holdings.py tests/test_holdings.py
@@ -464,7 +464,7 @@ git commit -m "feat: add holdings.py for YAML-based portfolio input"
 - Modify: `core/pricer.py` (dataclass는 Task 1에서 작성됨)
 - Create: `tests/test_pricer.py`
 
-- [ ] **Step 1: 테스트 작성**
+- [x] **Step 1: 테스트 작성**
 
 ```python
 # tests/test_pricer.py
@@ -520,14 +520,14 @@ def test_missing_price_skips_position(mock_kr, mock_us, mock_rate):
     assert "AAPL" in codes
 ```
 
-- [ ] **Step 2: 테스트 실패 확인**
+- [x] **Step 2: 테스트 실패 확인**
 
 ```
 pytest tests/test_pricer.py -v
 ```
 Expected: ImportError (build_portfolio_snapshot 미정의)
 
-- [ ] **Step 3: core/pricer.py 구현**
+- [x] **Step 3: core/pricer.py 구현**
 
 ```python
 # core/pricer.py (기존 dataclass 아래에 추가)
@@ -714,14 +714,14 @@ def build_portfolio_snapshot(
     )
 ```
 
-- [ ] **Step 4: 테스트 통과 확인**
+- [x] **Step 4: 테스트 통과 확인**
 
 ```
 pytest tests/test_pricer.py -v
 ```
 Expected: 2 passed
 
-- [ ] **Step 5: 커밋**
+- [x] **Step 5: 커밋**
 
 ```bash
 git add core/pricer.py tests/test_pricer.py
@@ -736,7 +736,7 @@ git commit -m "feat: add pricer.py with KR/US price fetching and portfolio snaps
 - Create: `core/alerter.py`
 - Create: `tests/test_alerter.py`
 
-- [ ] **Step 1: 테스트 작성**
+- [x] **Step 1: 테스트 작성**
 
 ```python
 # tests/test_alerter.py
@@ -796,14 +796,14 @@ def test_daily_pnl_triggers():
     assert any(a.type == "daily_pnl" for a in alerts)
 ```
 
-- [ ] **Step 2: 테스트 실패 확인**
+- [x] **Step 2: 테스트 실패 확인**
 
 ```
 pytest tests/test_alerter.py -v
 ```
 Expected: ImportError
 
-- [ ] **Step 3: core/alerter.py 구현**
+- [x] **Step 3: core/alerter.py 구현**
 
 ```python
 # core/alerter.py
@@ -870,14 +870,14 @@ def check_alerts(
     return alerts
 ```
 
-- [ ] **Step 4: 테스트 통과 확인**
+- [x] **Step 4: 테스트 통과 확인**
 
 ```
 pytest tests/test_alerter.py -v
 ```
 Expected: 4 passed
 
-- [ ] **Step 5: 커밋**
+- [x] **Step 5: 커밋**
 
 ```bash
 git add core/alerter.py tests/test_alerter.py
@@ -892,7 +892,7 @@ git commit -m "feat: add alerter.py with 3 alert types"
 - Create: `core/rebalancer.py`
 - Create: `tests/test_rebalancer.py`
 
-- [ ] **Step 1: 테스트 작성**
+- [x] **Step 1: 테스트 작성**
 
 ```python
 # tests/test_rebalancer.py
@@ -935,14 +935,14 @@ def test_within_band_excluded():
     assert len(deltas) == 0
 ```
 
-- [ ] **Step 2: 테스트 실패 확인**
+- [x] **Step 2: 테스트 실패 확인**
 
 ```
 pytest tests/test_rebalancer.py -v
 ```
 Expected: ImportError
 
-- [ ] **Step 3: core/rebalancer.py 구현**
+- [x] **Step 3: core/rebalancer.py 구현**
 
 ```python
 # core/rebalancer.py
@@ -996,14 +996,14 @@ def calc_rebalance_deltas(
     return deltas
 ```
 
-- [ ] **Step 4: 테스트 통과 확인**
+- [x] **Step 4: 테스트 통과 확인**
 
 ```
 pytest tests/test_rebalancer.py -v
 ```
 Expected: 2 passed
 
-- [ ] **Step 5: 커밋**
+- [x] **Step 5: 커밋**
 
 ```bash
 git add core/rebalancer.py tests/test_rebalancer.py
@@ -1019,7 +1019,7 @@ git commit -m "feat: add rebalancer.py for weight delta calculation"
 
 테스트는 DuckDuckGo 실제 호출에 의존하므로 별도 단독 실행 스크립트로 검증한다.
 
-- [ ] **Step 1: core/news_fetcher.py 작성**
+- [x] **Step 1: core/news_fetcher.py 작성**
 
 ```python
 # core/news_fetcher.py
@@ -1049,7 +1049,7 @@ def fetch_portfolio_news(positions: list, max_per_stock: int = 3) -> dict[str, l
     }
 ```
 
-- [ ] **Step 2: 단독 실행으로 동작 확인**
+- [x] **Step 2: 단독 실행으로 동작 확인**
 
 ```bash
 python -c "
@@ -1060,7 +1060,7 @@ print(headlines)
 ```
 Expected: 헤드라인 리스트 출력 (빈 리스트도 OK, 오류 없어야 함)
 
-- [ ] **Step 3: 커밋**
+- [x] **Step 3: 커밋**
 
 ```bash
 git add core/news_fetcher.py
@@ -1075,7 +1075,7 @@ git commit -m "feat: add news_fetcher.py with DuckDuckGo headlines"
 - Modify: `core/notifier.py`
 - Create: `tests/test_notifier.py`
 
-- [ ] **Step 1: 테스트 작성**
+- [x] **Step 1: 테스트 작성**
 
 ```python
 # tests/test_notifier.py
@@ -1100,14 +1100,14 @@ def test_each_part_fits_limit():
         assert len(p) <= 4096
 ```
 
-- [ ] **Step 2: 테스트 실패 확인**
+- [x] **Step 2: 테스트 실패 확인**
 
 ```
 pytest tests/test_notifier.py -v
 ```
 Expected: ImportError (split_message 미정의)
 
-- [ ] **Step 3: core/notifier.py 수정**
+- [x] **Step 3: core/notifier.py 수정**
 
 기존 `notify()` 함수는 유지하고 `split_message()`와 `notify_long()` 추가:
 
@@ -1171,14 +1171,14 @@ def notify_long(text: str, parse_mode: str = "Markdown") -> bool:
     return success
 ```
 
-- [ ] **Step 4: 테스트 통과 확인**
+- [x] **Step 4: 테스트 통과 확인**
 
 ```
 pytest tests/test_notifier.py -v
 ```
 Expected: 3 passed
 
-- [ ] **Step 5: 커밋**
+- [x] **Step 5: 커밋**
 
 ```bash
 git add core/notifier.py tests/test_notifier.py
@@ -1192,7 +1192,7 @@ git commit -m "feat: add split_message and notify_long for 4096 char limit"
 **Files:**
 - Create: `core/reporter.py`
 
-- [ ] **Step 1: core/reporter.py 작성**
+- [x] **Step 1: core/reporter.py 작성**
 
 ```python
 # core/reporter.py
@@ -1349,7 +1349,7 @@ def _call_claude(user_msg: str) -> str:
         return ""
 ```
 
-- [ ] **Step 2: 단독 실행으로 API 응답 확인**
+- [x] **Step 2: 단독 실행으로 API 응답 확인**
 
 `.env`에 `ANTHROPIC_API_KEY`가 설정된 상태에서:
 
@@ -1367,7 +1367,7 @@ print(report)
 ```
 Expected: 텔레그램용 Markdown 형식 리포트 출력
 
-- [ ] **Step 3: 커밋**
+- [x] **Step 3: 커밋**
 
 ```bash
 git add core/reporter.py
@@ -1381,7 +1381,7 @@ git commit -m "feat: add reporter.py with Claude API full/brief report generatio
 **Files:**
 - Create: `jobs/us_morning.py`
 
-- [ ] **Step 1: jobs/us_morning.py 작성**
+- [x] **Step 1: jobs/us_morning.py 작성**
 
 ```python
 """08:00 KST 실행. 미국 전일 종가 기준 풀 리포트."""
@@ -1474,14 +1474,14 @@ if __name__ == "__main__":
     sys.exit(main())
 ```
 
-- [ ] **Step 2: 단독 실행 테스트**
+- [x] **Step 2: 단독 실행 테스트**
 
 ```bash
 python -m jobs.us_morning
 ```
 Expected: 텔레그램에 US 리포트 수신
 
-- [ ] **Step 3: 커밋**
+- [x] **Step 3: 커밋**
 
 ```bash
 git add jobs/us_morning.py
@@ -1495,7 +1495,7 @@ git commit -m "feat: add us_morning.py pipeline (08:00 US full report)"
 **Files:**
 - Create: `jobs/kr_daily.py`
 
-- [ ] **Step 1: jobs/kr_daily.py 작성**
+- [x] **Step 1: jobs/kr_daily.py 작성**
 
 ```python
 """16:30 KST 실행. 국내 당일 종가 기준 간략 리포트."""
@@ -1600,21 +1600,21 @@ if __name__ == "__main__":
     sys.exit(main())
 ```
 
-- [ ] **Step 2: 단독 실행 테스트**
+- [x] **Step 2: 단독 실행 테스트**
 
 ```bash
 python -m jobs.kr_daily
 ```
 Expected: 텔레그램에 KR 마감 리포트 수신 (알람 없으면 숫자 요약, 알람 있으면 Claude 코멘트 포함)
 
-- [ ] **Step 3: 전체 테스트 통과 확인**
+- [x] **Step 3: 전체 테스트 통과 확인**
 
 ```bash
 pytest tests/ -v
 ```
 Expected: 모든 테스트 PASS
 
-- [ ] **Step 4: 최종 커밋**
+- [x] **Step 4: 최종 커밋**
 
 ```bash
 git add jobs/kr_daily.py
@@ -1625,7 +1625,7 @@ git commit -m "feat: add kr_daily.py pipeline (16:30 KR brief report)"
 
 ## Task 11: Windows 작업 스케줄러 등록
 
-- [ ] **Step 1: PowerShell로 작업 등록**
+- [x] **Step 1: PowerShell로 작업 등록**
 
 PowerShell을 관리자 권한으로 열고 실행 (경로를 본인 환경에 맞게 수정):
 
@@ -1644,14 +1644,14 @@ $triggerDaily = New-ScheduledTaskTrigger -Weekly -DaysOfWeek Monday,Tuesday,Wedn
 Register-ScheduledTask -TaskName "hedge_kr_daily" -Action $actionDaily -Trigger $triggerDaily -RunLevel Highest
 ```
 
-- [ ] **Step 2: 등록 확인**
+- [x] **Step 2: 등록 확인**
 
 ```powershell
 Get-ScheduledTask | Where-Object {$_.TaskName -like "hedge_*"}
 ```
 Expected: `hedge_us_morning`, `hedge_kr_daily` 두 태스크 표시
 
-- [ ] **Step 3: 수동 즉시 실행으로 최종 검증**
+- [x] **Step 3: 수동 즉시 실행으로 최종 검증**
 
 ```powershell
 Start-ScheduledTask -TaskName "hedge_us_morning"
