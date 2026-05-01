@@ -1,7 +1,7 @@
 """프라이싱 데이터클래스 정의 (가격 조회 로직 없음)."""
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
 
 
