@@ -8,3 +8,4 @@ config/secrets.yaml
 .kis_token*
 .claude/
 .superpowers/
+.worktrees/
