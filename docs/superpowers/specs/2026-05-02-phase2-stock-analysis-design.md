@@ -114,7 +114,7 @@ jobs/analyze.py
 
 ## 차트 이미지 (matplotlib)
 
-4패널 구성, 6개월 일봉 기준, PNG 임시 파일 생성 후 Telegram sendPhoto 전송:
+4패널 구성, 6개월 일봉 기준, PNG 임시 파일 생성 → Telegram sendPhoto 전송 → 즉시 삭제 (`data/chart_<TICKER>_<날짜>.png`):
 
 ```
 패널 1: 캔들/종가 + MA5/10/20/60 + 볼린저밴드 + 피보나치 수평선
