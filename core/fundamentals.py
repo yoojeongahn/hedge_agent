@@ -125,7 +125,9 @@ def _fetch_kr_dart(
         if not corps:
             logger.warning("DART 기업 코드 조회 실패: %s", code)
             return None, None, None, None, []
-        corp_code = corps[0].corp_code
+        # find_by_stock_code returns Corp directly when single match, CorpList otherwise
+        corp = corps if hasattr(corps, 'corp_code') else corps[0]
+        corp_code = corp.corp_code
 
         end = datetime.now().strftime("%Y%m%d")
         start = (datetime.now() - timedelta(days=550)).strftime("%Y%m%d")
