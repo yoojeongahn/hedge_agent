@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import logging
 import os
+from pathlib import Path
 
 import requests
 
@@ -63,3 +64,26 @@ def notify_long(text: str, parse_mode: str = "Markdown") -> bool:
         if not notify(part, parse_mode):
             success = False
     return success
+
+
+def send_photo(image_path: Path, caption: str = "") -> bool:
+    """차트 이미지를 텔레그램으로 전송. 전송 후 파일은 호출자가 삭제."""
+    token = os.getenv("TELEGRAM_BOT_TOKEN")
+    chat_id = os.getenv("TELEGRAM_CHAT_ID")
+    if not token or not chat_id:
+        logger.warning("Telegram 미설정 - 이미지 전송 스킵: %s", image_path)
+        return False
+    url = f"https://api.telegram.org/bot{token}/sendPhoto"
+    try:
+        with open(image_path, "rb") as f:
+            resp = requests.post(
+                url,
+                data={"chat_id": chat_id, "caption": caption},
+                files={"photo": f},
+                timeout=30,
+            )
+        resp.raise_for_status()
+        return True
+    except requests.RequestException as e:
+        logger.error("Telegram 이미지 전송 실패: %s", e)
+        return False
