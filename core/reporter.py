@@ -143,11 +143,11 @@ def generate_brief_report(
     return _call_claude(user_msg)
 
 
-def _call_claude(user_msg: str) -> str:
+def _call_claude(user_msg: str, max_tokens: int = 1500) -> str:
     try:
         resp = _get_client().messages.create(
             model="claude-sonnet-4-6",
-            max_tokens=1500,
+            max_tokens=max_tokens,
             system=[
                 {
                     "type": "text",
@@ -284,4 +284,4 @@ def generate_analysis_report(
 - 섹터 평균 PER를 감안하여 현재 밸류에이션 수준 평가
 - 매수/매도 결정은 사용자 최종 판단 (제안만)
 """
-    return _call_claude(user_msg)
+    return _call_claude(user_msg, max_tokens=3000)
