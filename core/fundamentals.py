@@ -125,38 +125,44 @@ def _fetch_kr_dart(
         if not corps:
             logger.warning("DART 기업 코드 조회 실패: %s", code)
             return None, None, None, None, []
-        corp_code = corps[0].corp_code
+        # find_by_stock_code returns Corp directly when single match, CorpList otherwise
+        corp = corps if hasattr(corps, 'corp_code') else corps[0]
+        corp_code = corp.corp_code
 
         end = datetime.now().strftime("%Y%m%d")
         start = (datetime.now() - timedelta(days=550)).strftime("%Y%m%d")
+        xbrl_ok = False
+        fs = None
         try:
             fs = dart.fs.extract(corp_code=corp_code, bgn_de=start, end_de=end, fs_tp="CFS")
+            xbrl_ok = bool(fs)
         except Exception as e:
             logger.warning("DART fs.extract 실패 (CFS) %s: %s — OFS 시도", code, e)
             try:
                 fs = dart.fs.extract(corp_code=corp_code, bgn_de=start, end_de=end, fs_tp="OFS")
+                xbrl_ok = bool(fs)
             except Exception as e2:
-                logger.warning("DART fs.extract 실패 (OFS) %s: %s", code, e2)
-                return None, None, None, None, []
+                logger.warning("DART fs.extract 실패 (OFS) %s: %s — raw API fallback", code, e2)
 
-        if not fs:
-            return None, None, None, None, []
+        if xbrl_ok and fs:
+            try:
+                is_df = fs.show("IS")
+            except Exception:
+                is_df = None
+            try:
+                bs_df = fs.show("BS")
+            except Exception:
+                bs_df = None
+            roe = _kr_calc_roe(is_df, bs_df)
+            debt_ratio = _kr_calc_debt_ratio(bs_df)
+            op_margin, rev_growth = _kr_calc_margins(is_df)
+            quarterly = _kr_quarterly(corp_code, dart)
+            return roe, debt_ratio, op_margin, rev_growth, quarterly
 
-        try:
-            is_df = fs.show("IS")
-        except Exception:
-            is_df = None
-        try:
-            bs_df = fs.show("BS")
-        except Exception:
-            bs_df = None
+        # XBRL 파싱 실패 시 DART JSON API 직접 호출
+        logger.info("DART raw API fallback 시도: %s", code)
+        return _fetch_kr_dart_raw_api(corp_code, dart_key)
 
-        roe = _kr_calc_roe(is_df, bs_df)
-        debt_ratio = _kr_calc_debt_ratio(bs_df)
-        op_margin, rev_growth = _kr_calc_margins(is_df)
-        quarterly = _kr_quarterly(corp_code, dart)
-
-        return roe, debt_ratio, op_margin, rev_growth, quarterly
     except Exception as e:
         logger.warning("DART 재무 조회 실패 %s: %s", code, e)
         return None, None, None, None, []
@@ -276,3 +282,107 @@ def _kr_quarterly(corp_code: str, dart) -> list[QuarterlyPoint]:
         except Exception as e:
             logger.warning("분기 데이터 조회 실패 %d분기 전: %s", i, e)
     return list(reversed(quarters))
+
+
+# ── DART raw JSON API fallback (non-XBRL 기업용) ─────────────────────────────
+
+_DART_API_BASE = "https://opendart.fss.or.kr/api"
+
+
+def _dart_get_fs(corp_code: str, dart_key: str, bsns_year: int, reprt_code: str, fs_div: str) -> list[dict]:
+    """DART fnlttSinglAcntAll 호출 → 항목 리스트 반환. 실패 시 []."""
+    try:
+        import requests as req
+        resp = req.get(
+            f"{_DART_API_BASE}/fnlttSinglAcntAll.json",
+            params={"crtfc_key": dart_key, "corp_code": corp_code,
+                    "bsns_year": str(bsns_year), "reprt_code": reprt_code, "fs_div": fs_div},
+            timeout=15,
+        )
+        data = resp.json()
+        if data.get("status") == "000":
+            return data.get("list") or []
+    except Exception as e:
+        logger.warning("DART raw API 호출 실패: %s", e)
+    return []
+
+
+def _dart_find(items: list[dict], sj_div: str, keywords: list[str], field: str = "thstrm_amount") -> float | None:
+    for item in items:
+        if item.get("sj_div") != sj_div:
+            continue
+        acct = item.get("account_nm", "")
+        if any(kw in acct for kw in keywords):
+            try:
+                val = str(item.get(field, "")).replace(",", "")
+                return float(val) if val else None
+            except (ValueError, TypeError):
+                pass
+    return None
+
+
+def _fetch_kr_dart_raw_api(
+    corp_code: str, dart_key: str
+) -> tuple[float | None, float | None, float | None, float | None, list[QuarterlyPoint]]:
+    """DART JSON API로 연간 재무지표 + 분기 데이터 반환 (XBRL 파싱 실패 기업용)."""
+    from datetime import datetime
+    current_year = datetime.now().year
+
+    items: list[dict] = []
+    used_year = None
+    for year in [current_year - 1, current_year - 2]:
+        for fs_div in ["CFS", "OFS"]:
+            result = _dart_get_fs(corp_code, dart_key, year, "11011", fs_div)
+            if result:
+                items = result
+                used_year = year
+                break
+        if items:
+            break
+
+    if not items:
+        logger.warning("DART raw API — 연간 데이터 없음: %s", corp_code)
+        return None, None, None, None, []
+
+    revenue = _dart_find(items, "IS", ["매출액", "수익(매출액)", "영업수익"])
+    prev_rev = _dart_find(items, "IS", ["매출액", "수익(매출액)", "영업수익"], "frmtrm_amount")
+    op_income = _dart_find(items, "IS", ["영업이익"])
+    net_income = _dart_find(items, "IS", ["당기순이익"])
+    total_equity = _dart_find(items, "BS", ["자본총계", "자본합계", "자본  합계"])
+    total_liabilities = _dart_find(items, "BS", ["부채총계", "부채합계", "부채  합계"])
+
+    roe = round(net_income / total_equity * 100, 2) if net_income and total_equity else None
+    debt_ratio = round(total_liabilities / total_equity * 100, 2) if total_liabilities and total_equity else None
+    op_margin = round(op_income / revenue * 100, 2) if op_income and revenue else None
+    rev_growth = round((revenue - prev_rev) / abs(prev_rev) * 100, 2) if revenue and prev_rev else None
+
+    quarterly = _kr_quarterly_raw_api(corp_code, dart_key, used_year or current_year - 1)
+    return roe, debt_ratio, op_margin, rev_growth, quarterly
+
+
+def _kr_quarterly_raw_api(corp_code: str, dart_key: str, base_year: int) -> list[QuarterlyPoint]:
+    """DART raw API로 최근 4분기 매출 + 영업이익 (분기보고서 기준)."""
+    # reprt_code: 11011=사업보고서(Q4), 11012=반기보고서(Q2), 11013=3분기(Q3), 11014=1분기(Q1)
+    targets = [
+        (base_year,     "11013", f"{base_year}Q3"),
+        (base_year,     "11012", f"{base_year}Q2"),
+        (base_year,     "11014", f"{base_year}Q1"),
+        (base_year - 1, "11011", f"{base_year - 1}Q4"),
+    ]
+    quarters = []
+    for year, reprt_code, label in targets:
+        items: list[dict] = []
+        for fs_div in ["CFS", "OFS"]:
+            items = _dart_get_fs(corp_code, dart_key, year, reprt_code, fs_div)
+            if items:
+                break
+        if not items:
+            continue
+        rev = _dart_find(items, "IS", ["매출액", "수익(매출액)", "영업수익"])
+        op = _dart_find(items, "IS", ["영업이익"])
+        quarters.append(QuarterlyPoint(
+            label=label,
+            revenue=round(rev / 1e8, 0) if rev is not None else None,
+            operating_profit=round(op / 1e8, 0) if op is not None else None,
+        ))
+    return quarters
