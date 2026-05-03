@@ -2,12 +2,15 @@ from __future__ import annotations
 
 import logging
 import os
+from datetime import datetime
 
 from anthropic import Anthropic
 
 from core.alerter import Alert
+from core.fundamentals import FundamentalsData
 from core.pricer import PortfolioSnapshot
 from core.rebalancer import RebalanceDelta
+from core.technicals import TechnicalsData
 
 logger = logging.getLogger(__name__)
 
@@ -158,3 +161,126 @@ def _call_claude(user_msg: str) -> str:
     except Exception as e:
         logger.error("Claude API 실패: %s", e)
         return ""
+
+
+def _fmt_fundamentals(fd: FundamentalsData) -> str:
+    def _v(val, fmt=".1f", suffix=""):
+        return f"{val:{fmt}}{suffix}" if val is not None else "N/A"
+
+    lines = [
+        f"PER {_v(fd.per)} | PBR {_v(fd.pbr)} | ROE {_v(fd.roe)}%",
+        f"부채비율 {_v(fd.debt_ratio)}% | 영업이익률 {_v(fd.operating_margin)}% | 매출성장 {_v(fd.revenue_growth_yoy, '+.1f')}% YoY",
+    ]
+    if fd.quarterly:
+        rev_line = " → ".join(
+            f"{q.label} {q.revenue:,.0f}" if q.revenue else f"{q.label} N/A"
+            for q in fd.quarterly
+        )
+        op_line = " → ".join(
+            f"{q.label} {q.operating_profit:,.0f}" if q.operating_profit else f"{q.label} N/A"
+            for q in fd.quarterly
+        )
+        lines.append(f"분기매출(억): {rev_line}")
+        lines.append(f"분기영업이익: {op_line}")
+    return "\n".join(lines)
+
+
+def _fmt_technicals(tech: TechnicalsData) -> str:
+    def _v(val, fmt=".2f"):
+        return f"{val:{fmt}}" if val is not None else "N/A"
+    def _arr(cur, ref):
+        if cur is None or ref is None:
+            return ""
+        return "↑" if cur > ref else "↓"
+
+    lines = [
+        f"현재가 {tech.current_price:,.2f}",
+        f"MA5 {_v(tech.ma5)}{_arr(tech.current_price, tech.ma5)}  "
+        f"MA10 {_v(tech.ma10)}{_arr(tech.current_price, tech.ma10)}  "
+        f"MA20 {_v(tech.ma20)}{_arr(tech.current_price, tech.ma20)}  "
+        f"MA60 {_v(tech.ma60)}{_arr(tech.current_price, tech.ma60)}",
+        f"RSI {_v(tech.rsi14)} | MACD {_v(tech.macd)} / Signal {_v(tech.macd_signal)}",
+        f"볼린저밴드 상단 {_v(tech.bb_upper)} / 하단 {_v(tech.bb_lower)}",
+        f"거래량 {_v(tech.volume_ratio, '.1f')}배 (20일 평균 대비)",
+    ]
+    if tech.fib:
+        lines.append(
+            f"피보나치 ({tech.fib.high:,.2f}~{tech.fib.low:,.2f}) | "
+            f"38.2% {tech.fib.level_382:,.2f} | 50% {tech.fib.level_500:,.2f} | "
+            f"61.8% {tech.fib.level_618:,.2f} | 현재: {tech.fib.current_zone}"
+        )
+    lines.append(
+        f"주봉 MA10 {_v(tech.ma10w)} MA20 {_v(tech.ma20w)} — {tech.weekly_trend}"
+    )
+    if tech.pct_from_52w_high is not None:
+        lines.append(
+            f"52주 고점 대비 {tech.pct_from_52w_high:+.1f}% | "
+            f"52주 저점 대비 {tech.pct_from_52w_low:+.1f}%"
+        )
+    return "\n".join(lines)
+
+
+def _fmt_supply(tech: TechnicalsData) -> str | None:
+    if tech.foreign_net_buy_5d is None and tech.institution_net_buy_5d is None:
+        return None
+    parts = []
+    if tech.foreign_net_buy_5d is not None:
+        parts.append(f"외국인 {tech.foreign_net_buy_5d:+,.0f}억")
+    if tech.institution_net_buy_5d is not None:
+        parts.append(f"기관 {tech.institution_net_buy_5d:+,.0f}억")
+    return "  ".join(parts)
+
+
+def generate_analysis_report(
+    fd: FundamentalsData,
+    tech: TechnicalsData,
+    news: list[str],
+) -> str:
+    """Claude 심층 분석 리포트 생성."""
+    supply_str = _fmt_supply(tech)
+    news_str = "\n".join(f"· {h}" for h in news) if news else "뉴스 없음"
+
+    supply_section = f"\n[수급 (최근 5거래일)]\n{supply_str}" if supply_str else ""
+    supply_output = "\n━━━ 🏦 수급 ━━━\n(외국인·기관 순매수)" if supply_str else ""
+
+    user_msg = f"""아래 종목 데이터를 바탕으로 심층 분석 리포트를 작성해 주세요.
+
+종목: {fd.name} ({fd.code}) | 시장: {fd.market}
+
+[재무 지표]
+{_fmt_fundamentals(fd)}
+
+[기술 지표]
+{_fmt_technicals(tech)}
+{supply_section}
+
+[뉴스]
+{news_str}
+
+출력 형식 (텔레그램 Markdown):
+🔍 *{fd.name} ({fd.code}) 심층 분석* | {datetime.now().strftime('%Y-%m-%d')}
+
+━━━ 📊 재무 ━━━
+(PER/PBR/ROE/부채비율/영업이익률/매출성장 + 분기 추이)
+
+━━━ 📈 기술 지표 (일봉) ━━━
+(MA / RSI / MACD / 볼린저밴드 / 거래량)
+
+━━━ 🌀 피보나치 ━━━
+(지지·저항 레벨 + 현재가 위치){supply_output}
+
+━━━ 📉 장기 추세 (주봉) ━━━
+(MA10주/MA20주 + 정배열 여부 + 52주 위치)
+
+━━━ 📰 뉴스 ━━━
+(헤드라인 나열)
+
+━━━ 🤖 Claude 의견 ━━━
+*단기 (단타):* (기술 지표·수급·거래량 기반 진입 타이밍)
+*중장기 (가치+차트):* (재무 건전성·섹터 평균 PER 감안 밸류에이션·주봉 추세 종합)
+
+지시사항:
+- 섹터 평균 PER를 감안하여 현재 밸류에이션 수준 평가
+- 매수/매도 결정은 사용자 최종 판단 (제안만)
+"""
+    return _call_claude(user_msg)
