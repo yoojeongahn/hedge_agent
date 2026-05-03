@@ -173,15 +173,16 @@ def _fmt_fundamentals(fd: FundamentalsData) -> str:
     ]
     if fd.quarterly:
         rev_line = " → ".join(
-            f"{q.label} {q.revenue:,.0f}" if q.revenue else f"{q.label} N/A"
+            f"{q.label} {q.revenue:,.0f}" if q.revenue is not None else f"{q.label} N/A"
             for q in fd.quarterly
         )
         op_line = " → ".join(
-            f"{q.label} {q.operating_profit:,.0f}" if q.operating_profit else f"{q.label} N/A"
+            f"{q.label} {q.operating_profit:,.0f}" if q.operating_profit is not None else f"{q.label} N/A"
             for q in fd.quarterly
         )
-        lines.append(f"분기매출(억): {rev_line}")
-        lines.append(f"분기영업이익: {op_line}")
+        unit = "억원" if fd.market == "KR" else "M USD"
+        lines.append(f"분기매출({unit}): {rev_line}")
+        lines.append(f"분기영업이익({unit}): {op_line}")
     return "\n".join(lines)
 
 

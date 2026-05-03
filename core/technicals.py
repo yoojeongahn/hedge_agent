@@ -228,11 +228,14 @@ def _fibonacci(current: float, high: float, low: float) -> FibLevels:
     }
     sorted_vals = sorted(levels.values(), reverse=True)
     zone = "하단 이하"
-    keys = list(levels.keys())
-    for i in range(len(sorted_vals) - 1):
-        if current >= sorted_vals[i + 1]:
-            zone = f"{keys[i]}%~{keys[i+1]}% 구간"
-            break
+    if current >= sorted_vals[0]:
+        zone = "23.6% 이상 (고점 근접)"
+    else:
+        keys = list(levels.keys())
+        for i in range(len(sorted_vals) - 1):
+            if current >= sorted_vals[i + 1]:
+                zone = f"{keys[i]}%~{keys[i+1]}% 구간"
+                break
     return FibLevels(
         high=high, low=low,
         level_236=levels["236"], level_382=levels["382"],

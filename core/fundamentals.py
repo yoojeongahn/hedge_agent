@@ -270,8 +270,8 @@ def _kr_quarterly(corp_code: str, dart) -> list[QuarterlyPoint]:
             label = f"{end_dt.year}Q{(end_dt.month - 1) // 3 + 1}"
             rev = _kr_find_row(is_df, ["매출액", "수익(매출액)"])
             op = _kr_find_row(is_df, ["영업이익"])
-            rev_bn = round(rev / 1e8, 0) if rev else None
-            op_bn = round(op / 1e8, 0) if op else None
+            rev_bn = round(rev / 1e8, 0) if rev is not None else None
+            op_bn = round(op / 1e8, 0) if op is not None else None
             quarters.append(QuarterlyPoint(label=label, revenue=rev_bn, operating_profit=op_bn))
         except Exception as e:
             logger.warning("분기 데이터 조회 실패 %d분기 전: %s", i, e)

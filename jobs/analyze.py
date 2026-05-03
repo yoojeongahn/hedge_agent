@@ -99,7 +99,7 @@ def main() -> int:
     if report:
         notify_long(report)
     else:
-        lines = [f"🔍 *{name} ({ticker})* 분석 결과\n"]
+        lines = [f"🔍 *{name} ({ticker})* 분석 결과 _(Claude 분석 실패, 데이터만 표시)_\n"]
         if fd:
             lines.append(f"PER {fd.per} | PBR {fd.pbr} | ROE {fd.roe}%")
         if tech:
