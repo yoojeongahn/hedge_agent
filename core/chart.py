@@ -38,7 +38,7 @@ def generate_chart(
     tech: TechnicalsData,
     output_dir: Path | None = None,
 ) -> Path:
-    """4패널 차트(가격+MA+BB+피보, 거래량, RSI, MACD)를 PNG로 저장하고 Path 반환."""
+    """4패널 차트(가격+MA+BB, 거래량, RSI, MACD)를 PNG로 저장하고 Path 반환."""
     if output_dir is None:
         output_dir = Path("data")
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -53,7 +53,7 @@ def generate_chart(
     fig.suptitle(f"{code} ({market}) — {datetime.now().strftime('%Y-%m-%d')}",
                  color="white", fontsize=13, y=0.98)
 
-    # Panel 1: 가격 + MAs + BB + 피보나치
+    # Panel 1: 가격 + MAs + BB
     ax1 = fig.add_subplot(gs[0])
     ax1.set_facecolor("#1C1C1C")
     ax1.plot(dates, close, color="white", linewidth=1.2, label="종가")
@@ -76,17 +76,6 @@ def generate_chart(
                          rolling_mean + 2 * rolling_std,
                          rolling_mean - 2 * rolling_std,
                          alpha=0.1, color=_COLORS["bb"], label="볼린저밴드")
-
-    if tech.fib:
-        for lvl, lbl, color in [
-            (tech.fib.level_236, "23.6%", "yellow"),
-            (tech.fib.level_382, "38.2%", "orange"),
-            (tech.fib.level_500, "50.0%", "red"),
-            (tech.fib.level_618, "61.8%", "lime"),
-            (tech.fib.level_786, "78.6%", "cyan"),
-        ]:
-            ax1.axhline(y=lvl, color=color, linewidth=0.5, linestyle="--", alpha=0.6)
-            ax1.text(dates[-1], lvl, f" {lbl}", color=color, fontsize=7, va="center")
 
     ax1.legend(loc="upper left", fontsize=7, facecolor="#2C2C2C", labelcolor="white")
     ax1.set_ylabel("Price", color="white", fontsize=9)

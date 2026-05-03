@@ -2,7 +2,7 @@
 import pytest
 import pandas as pd
 import numpy as np
-from core.technicals import calculate_technicals, TechnicalsData, FibLevels
+from core.technicals import calculate_technicals, TechnicalsData
 
 
 def make_price_df(n: int = 120, start: float = 100.0) -> pd.DataFrame:
@@ -35,11 +35,15 @@ def test_rsi_range():
         assert 0 <= tech.rsi14 <= 100
 
 
-def test_fibonacci_levels():
-    df = make_price_df(260)  # 52주 이상
+def test_weekly_monthly_trend():
+    df = make_price_df(260)  # 52주 이상 → 주봉 20주 + 월봉 12개월 커버
     tech = calculate_technicals(df, "TEST", "US")
-    assert tech.fib is not None
-    assert tech.fib.level_618 < tech.fib.level_500 < tech.fib.level_382
+    # 단조 증가 시리즈이므로 정배열 (상승) 또는 데이터 부족
+    assert tech.weekly_trend in ("정배열 (상승)", "횡보", "데이터 부족")
+    assert tech.monthly_trend in ("정배열 (상승)", "횡보", "데이터 부족")
+    # MA 값 존재 확인
+    assert tech.ma5w is not None
+    assert tech.ma10w is not None
 
 
 def test_volume_ratio():

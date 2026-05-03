@@ -195,7 +195,12 @@ def _fmt_technicals(tech: TechnicalsData) -> str:
         return "↑" if cur > ref else "↓"
 
     lines = [
-        f"현재가 {tech.current_price:,.2f}",
+        # 월봉
+        f"[월봉] MA3M {_v(tech.ma3m)}  MA6M {_v(tech.ma6m)}  MA12M {_v(tech.ma12m)} → {tech.monthly_trend}",
+        # 주봉
+        f"[주봉] MA5W {_v(tech.ma5w)}  MA10W {_v(tech.ma10w)}  MA20W {_v(tech.ma20w)} → {tech.weekly_trend}",
+        # 일봉
+        f"[일봉] 현재가 {tech.current_price:,.2f}",
         f"MA5 {_v(tech.ma5)}{_arr(tech.current_price, tech.ma5)}  "
         f"MA10 {_v(tech.ma10)}{_arr(tech.current_price, tech.ma10)}  "
         f"MA20 {_v(tech.ma20)}{_arr(tech.current_price, tech.ma20)}  "
@@ -204,15 +209,6 @@ def _fmt_technicals(tech: TechnicalsData) -> str:
         f"볼린저밴드 상단 {_v(tech.bb_upper)} / 하단 {_v(tech.bb_lower)}",
         f"거래량 {_v(tech.volume_ratio, '.1f')}배 (20일 평균 대비)",
     ]
-    if tech.fib:
-        lines.append(
-            f"피보나치 ({tech.fib.high:,.2f}~{tech.fib.low:,.2f}) | "
-            f"38.2% {tech.fib.level_382:,.2f} | 50% {tech.fib.level_500:,.2f} | "
-            f"61.8% {tech.fib.level_618:,.2f} | 현재: {tech.fib.current_zone}"
-        )
-    lines.append(
-        f"주봉 MA10 {_v(tech.ma10w)} MA20 {_v(tech.ma20w)} — {tech.weekly_trend}"
-    )
     if tech.pct_from_52w_high is not None:
         lines.append(
             f"52주 고점 대비 {tech.pct_from_52w_high:+.1f}% | "
@@ -264,23 +260,20 @@ def generate_analysis_report(
 ━━━ 📊 재무 ━━━
 (PER/PBR/ROE/부채비율/영업이익률/매출성장 + 분기 추이)
 
-━━━ 📈 기술 지표 (일봉) ━━━
-(MA / RSI / MACD / 볼린저밴드 / 거래량)
-
-━━━ 🌀 피보나치 ━━━
-(지지·저항 레벨 + 현재가 위치){supply_output}
-
-━━━ 📉 장기 추세 (주봉) ━━━
-(MA10주/MA20주 + 정배열 여부 + 52주 위치)
+━━━ 📈 멀티타임프레임 추세 ━━━
+월봉: (MA3M/6M/12M 배열 → 장기 방향)
+주봉: (MA5W/10W/20W 배열 → 중기 방향)
+일봉: (MA5/20/60 + RSI + MACD + 볼린저밴드 + 거래량){supply_output}
 
 ━━━ 📰 뉴스 ━━━
 (헤드라인 나열)
 
 ━━━ 🤖 Claude 의견 ━━━
-*단기 (단타):* (기술 지표·수급·거래량 기반 진입 타이밍)
-*중장기 (가치+차트):* (재무 건전성·섹터 평균 PER 감안 밸류에이션·주봉 추세 종합)
+*단기 (단타):* (일봉 지표·수급·거래량 기반 진입 타이밍)
+*중장기 (가치+차트):* (재무 건전성·섹터 평균 PER 감안 밸류에이션·월봉/주봉 추세 종합)
 
 지시사항:
+- 월봉→주봉→일봉 순서로 큰 추세에서 작은 추세를 확인하는 탑다운 분석
 - 섹터 평균 PER를 감안하여 현재 밸류에이션 수준 평가
 - 매수/매도 결정은 사용자 최종 판단 (제안만)
 """
