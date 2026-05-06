@@ -27,7 +27,7 @@ while ($true) {
     }
 
     if ($state -and ((Get-Date) - $lastChangeAt).TotalSeconds -ge $QuietSeconds) {
-        . "$PSScriptRoot\git-auto-sync.ps1"
+        & "$PSScriptRoot\git-auto-sync.ps1"
         $lastState = ""
         $lastChangeAt = Get-Date
     }
