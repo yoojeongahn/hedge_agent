@@ -3,13 +3,47 @@
 # 여러 증권사 혼합 사용 가능 (broker 필드는 참고용)
 
 positions:
-  - code: "005930"
-    name: "삼성전자"
+  - code: "289080"
+    name: "SV인베스트먼트"
     market: KR
-    quantity: 0
-    avg_price: 0
+    quantity: 7735
+    avg_price: 3212
     broker: ""
 
+  - code: "411060"
+    name: "ACE KRX금현물"
+    market: KR
+    quantity: 141
+    avg_price: 29525
+    broker: ""
+
+  - code: "473640"
+    name: "HANARO 글로벌금채굴기업"
+    market: KR
+    quantity: 42
+    avg_price: 35565
+    broker: ""
+
+  - code: "ABCL"
+    name: "앱셀레라 바이오로직스"
+    market: US
+    quantity: 1930
+    avg_price: 2.5814
+    broker: ""
+
+  - code: "PGY"
+    name: "파가야 테크놀로지스"
+    market: US
+    quantity: 474
+    avg_price: 11.7000
+    broker: ""
+
+  - code: "B"
+    name: "바릭 마이닝"
+    market: US
+    quantity: 130
+    avg_price: 38.2786
+    broker: ""
   # - code: "AAPL"
   #   name: "Apple"
   #   market: US
