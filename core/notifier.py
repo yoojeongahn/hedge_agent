@@ -49,6 +49,13 @@ def notify(text: str, parse_mode: str = "Markdown") -> bool:
             json={"chat_id": chat_id, "text": text, "parse_mode": parse_mode},
             timeout=10,
         )
+        if resp.status_code == 400 and parse_mode:
+            # 마크다운 파싱 오류 시 plain text로 재시도
+            resp = requests.post(
+                url,
+                json={"chat_id": chat_id, "text": text},
+                timeout=10,
+            )
         resp.raise_for_status()
         return True
     except requests.RequestException as e:
