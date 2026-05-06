@@ -196,23 +196,20 @@ def _fmt_technicals(tech: TechnicalsData) -> str:
 
     lines = [
         f"현재가 {tech.current_price:,.2f}",
-        f"MA5 {_v(tech.ma5)}{_arr(tech.current_price, tech.ma5)}  "
+        f"[일봉] MA5 {_v(tech.ma5)}{_arr(tech.current_price, tech.ma5)}  "
         f"MA10 {_v(tech.ma10)}{_arr(tech.current_price, tech.ma10)}  "
         f"MA20 {_v(tech.ma20)}{_arr(tech.current_price, tech.ma20)}  "
         f"MA60 {_v(tech.ma60)}{_arr(tech.current_price, tech.ma60)}",
         f"RSI {_v(tech.rsi14)} | MACD {_v(tech.macd)} / Signal {_v(tech.macd_signal)}",
         f"볼린저밴드 상단 {_v(tech.bb_upper)} / 하단 {_v(tech.bb_lower)}",
-        f"거래량 {_v(tech.volume_ratio, '.1f')}배 (20일 평균 대비)",
+        f"ATR(14) {_v(tech.atr14)} | 거래량 {_v(tech.volume_ratio, '.1f')}배 (20일 평균 대비)",
+        f"[주봉] MA5주 {_v(tech.ma5w)}{_arr(tech.current_price, tech.ma5w)}  "
+        f"MA10주 {_v(tech.ma10w)}{_arr(tech.current_price, tech.ma10w)}  "
+        f"MA20주 {_v(tech.ma20w)}{_arr(tech.current_price, tech.ma20w)}  — {tech.weekly_trend}",
+        f"[월봉] MA3M {_v(tech.ma3m)}{_arr(tech.current_price, tech.ma3m)}  "
+        f"MA6M {_v(tech.ma6m)}{_arr(tech.current_price, tech.ma6m)}  "
+        f"MA12M {_v(tech.ma12m)}{_arr(tech.current_price, tech.ma12m)}  — {tech.monthly_trend}",
     ]
-    if tech.fib:
-        lines.append(
-            f"피보나치 ({tech.fib.high:,.2f}~{tech.fib.low:,.2f}) | "
-            f"38.2% {tech.fib.level_382:,.2f} | 50% {tech.fib.level_500:,.2f} | "
-            f"61.8% {tech.fib.level_618:,.2f} | 현재: {tech.fib.current_zone}"
-        )
-    lines.append(
-        f"주봉 MA10 {_v(tech.ma10w)} MA20 {_v(tech.ma20w)} — {tech.weekly_trend}"
-    )
     if tech.pct_from_52w_high is not None:
         lines.append(
             f"52주 고점 대비 {tech.pct_from_52w_high:+.1f}% | "
@@ -267,21 +264,19 @@ def generate_analysis_report(
 ━━━ 📈 기술 지표 (일봉) ━━━
 (MA / RSI / MACD / 볼린저밴드 / 거래량)
 
-━━━ 🌀 피보나치 ━━━
-(지지·저항 레벨 + 현재가 위치){supply_output}
-
-━━━ 📉 장기 추세 (주봉) ━━━
-(MA10주/MA20주 + 정배열 여부 + 52주 위치)
+━━━ 📉 추세 분석 (주봉 / 월봉) ━━━
+(주봉 MA5/10/20주 + 월봉 MA3/6/12M + 정배열 여부 + 52주 위치){supply_output}
 
 ━━━ 📰 뉴스 ━━━
 (헤드라인 나열)
 
 ━━━ 🤖 Claude 의견 ━━━
 *단기 (단타):* (기술 지표·수급·거래량 기반 진입 타이밍)
-*중장기 (가치+차트):* (재무 건전성·섹터 평균 PER 감안 밸류에이션·주봉 추세 종합)
+*중장기 (가치+차트):* (재무 건전성·섹터 평균 PER 감안 밸류에이션·주봉/월봉 추세 종합)
 
 지시사항:
 - 섹터 평균 PER를 감안하여 현재 밸류에이션 수준 평가
+- ATR(14) 기반으로 손절가와 1차 목표가를 숫자로 제안 (손절 = 현재가 - ATR×1.5, 목표 = 현재가 + ATR×2.0)
 - 매수/매도 결정은 사용자 최종 판단 (제안만)
 """
     return _call_claude(user_msg)
