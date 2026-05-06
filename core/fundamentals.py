@@ -95,9 +95,10 @@ def _fetch_kr(code: str, name: str) -> FundamentalsData:
 def _fetch_kr_ratios(code: str) -> tuple[float | None, float | None]:
     try:
         from pykrx import stock as pykrx_stock
-        from datetime import datetime
-        today = datetime.now().strftime("%Y%m%d")
-        df = pykrx_stock.get_market_fundamental(today, today, code)
+        from datetime import datetime, timedelta
+        end = datetime.now().strftime("%Y%m%d")
+        start = (datetime.now() - timedelta(days=7)).strftime("%Y%m%d")  # 최근 5영업일 커버
+        df = pykrx_stock.get_market_fundamental(start, end, code)
         if df.empty:
             return None, None
         per = float(df["PER"].iloc[-1]) if "PER" in df.columns else None
