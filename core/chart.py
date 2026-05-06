@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import matplotlib
@@ -20,6 +20,9 @@ _COLORS = {
     "ma10": "#FFA07A",
     "ma20": "#4ECDC4",
     "ma60": "#45B7D1",
+    "ma3m": "#FFD700",
+    "ma6m": "#FF8C00",
+    "ma12m": "#FF4500",
     "bb": "#95A5A6",
     "volume": "#5D6D7E",
     "vol_avg": "#F39C12",
@@ -53,21 +56,28 @@ def generate_chart(
     fig.suptitle(f"{code} ({market}) — {datetime.now().strftime('%Y-%m-%d')}",
                  color="white", fontsize=13, y=0.98)
 
-    # Panel 1: 가격 + MAs + BB + 피보나치
+    # Panel 1: 가격 + 일봉 MAs + BB + 월봉 MAs
     ax1 = fig.add_subplot(gs[0])
     ax1.set_facecolor("#1C1C1C")
-    ax1.plot(dates, close, color="white", linewidth=1.2, label="종가")
+    _bar_width = timedelta(hours=14)
+    for idx, row in chart_df.iterrows():
+        is_up = row["Close"] >= row["Open"]
+        color = "#26A69A" if is_up else "#EF5350"
+        body_bottom = min(row["Open"], row["Close"])
+        body_height = max(abs(row["Close"] - row["Open"]), row["Close"] * 0.0002)
+        ax1.bar(idx, body_height, bottom=body_bottom, color=color,
+                width=_bar_width, alpha=0.9, linewidth=0)
+        ax1.vlines(idx, row["Low"], row["High"], color=color, linewidth=0.5)
 
-    for ma_attr, color, label in [
-        ("ma5", _COLORS["ma5"], "MA5"),
-        ("ma10", _COLORS["ma10"], "MA10"),
-        ("ma20", _COLORS["ma20"], "MA20"),
-        ("ma60", _COLORS["ma60"], "MA60"),
+    for period, color, label in [
+        (5, _COLORS["ma5"], "MA5"),
+        (10, _COLORS["ma10"], "MA10"),
+        (20, _COLORS["ma20"], "MA20"),
+        (60, _COLORS["ma60"], "MA60"),
     ]:
-        period = int(label[2:])
-        if len(close) >= period:
-            ax1.plot(dates, close.rolling(period).mean(), color=color,
-                     linewidth=0.8, alpha=0.8, label=label)
+        if len(df) >= period:
+            ax1.plot(dates, df["Close"].rolling(period).mean().tail(126),
+                     color=color, linewidth=0.8, alpha=0.8, label=label)
 
     if len(close) >= 20:
         rolling_mean = close.rolling(20).mean()
@@ -77,16 +87,14 @@ def generate_chart(
                          rolling_mean - 2 * rolling_std,
                          alpha=0.1, color=_COLORS["bb"], label="볼린저밴드")
 
-    if tech.fib:
-        for lvl, lbl, color in [
-            (tech.fib.level_236, "23.6%", "yellow"),
-            (tech.fib.level_382, "38.2%", "orange"),
-            (tech.fib.level_500, "50.0%", "red"),
-            (tech.fib.level_618, "61.8%", "lime"),
-            (tech.fib.level_786, "78.6%", "cyan"),
-        ]:
-            ax1.axhline(y=lvl, color=color, linewidth=0.5, linestyle="--", alpha=0.6)
-            ax1.text(dates[-1], lvl, f" {lbl}", color=color, fontsize=7, va="center")
+    for period, color, label in [
+        (63, _COLORS["ma3m"], "MA3M"),
+        (126, _COLORS["ma6m"], "MA6M"),
+        (252, _COLORS["ma12m"], "MA12M"),
+    ]:
+        if len(df) >= period:
+            ax1.plot(dates, df["Close"].rolling(period).mean().tail(126),
+                     color=color, linewidth=1.0, alpha=0.7, linestyle="--", label=label)
 
     ax1.legend(loc="upper left", fontsize=7, facecolor="#2C2C2C", labelcolor="white")
     ax1.set_ylabel("Price", color="white", fontsize=9)

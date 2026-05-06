@@ -34,3 +34,22 @@ def test_chart_cleans_up_on_request(tmp_path):
     chart_path = generate_chart("TEST", "US", df, tech, output_dir=tmp_path)
     chart_path.unlink()
     assert not chart_path.exists()
+
+
+def test_chart_uses_ohlc(tmp_path):
+    """캔들스틱이 OHLC 데이터를 사용하는지 확인 — Open != Close여야 의미 있음."""
+    rng = np.random.default_rng(42)
+    n = 130
+    closes = 100 + np.cumsum(rng.normal(0, 0.5, n))
+    opens = closes * rng.uniform(0.99, 1.01, n)
+    df = pd.DataFrame({
+        "Open": opens,
+        "High": np.maximum(opens, closes) * 1.005,
+        "Low": np.minimum(opens, closes) * 0.995,
+        "Close": closes,
+        "Volume": [1_000_000] * n,
+    }, index=pd.date_range("2025-01-01", periods=n, freq="B"))
+    tech = calculate_technicals(df, "TEST", "US")
+    chart_path = generate_chart("TEST", "US", df, tech, output_dir=tmp_path)
+    assert chart_path.exists()
+    assert chart_path.stat().st_size > 5000
