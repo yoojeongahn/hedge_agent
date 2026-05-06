@@ -2,7 +2,7 @@
 import pytest
 import pandas as pd
 import numpy as np
-from core.technicals import calculate_technicals, TechnicalsData, FibLevels
+from core.technicals import calculate_technicals, TechnicalsData
 
 
 def make_price_df(n: int = 120, start: float = 100.0) -> pd.DataFrame:
@@ -35,11 +35,23 @@ def test_rsi_range():
         assert 0 <= tech.rsi14 <= 100
 
 
-def test_fibonacci_levels():
-    df = make_price_df(260)  # 52주 이상
+def test_monthly_ma_calculated():
+    df = make_price_df(260)  # 12개월(252일) 이상
     tech = calculate_technicals(df, "TEST", "US")
-    assert tech.fib is not None
-    assert tech.fib.level_618 < tech.fib.level_500 < tech.fib.level_382
+    assert tech.ma3m is not None
+    assert tech.ma6m is not None
+    assert tech.ma12m is not None
+    assert tech.monthly_trend in ("정배열", "역배열", "횡보", "데이터 부족")
+    # 단조 증가이므로 MA3M > MA6M > MA12M
+    assert tech.ma3m > tech.ma6m > tech.ma12m
+
+
+def test_weekly_ma5w_calculated():
+    df = make_price_df(120)
+    tech = calculate_technicals(df, "TEST", "US")
+    assert tech.ma5w is not None
+    assert tech.ma10w is not None
+    assert tech.ma20w is not None
 
 
 def test_volume_ratio():
@@ -55,3 +67,15 @@ def test_short_series_returns_none_gracefully():
     tech = calculate_technicals(df, "TEST", "US")
     assert tech.ma60 is None
     assert tech.rsi14 is None
+
+
+def test_atr_calculated():
+    df = make_price_df(60)
+    tech = calculate_technicals(df, "TEST", "US")
+    assert tech.atr14 is not None
+    assert tech.atr14 > 0
+
+def test_atr_none_on_short_series():
+    df = make_price_df(10)  # period+1=15 미만
+    tech = calculate_technicals(df, "TEST", "US")
+    assert tech.atr14 is None

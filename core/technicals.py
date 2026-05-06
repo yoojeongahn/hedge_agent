@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 
 import pandas as pd
@@ -12,25 +12,13 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass
-class FibLevels:
-    high: float
-    low: float
-    level_236: float
-    level_382: float
-    level_500: float
-    level_618: float
-    level_786: float
-    current_zone: str
-
-
-@dataclass
 class TechnicalsData:
     code: str
     market: str
     current_price: float
     week52_high: float | None
     week52_low: float | None
-    # Daily MAs
+    # Daily MAs (일봉)
     ma5: float | None
     ma10: float | None
     ma20: float | None
@@ -43,16 +31,22 @@ class TechnicalsData:
     bb_upper: float | None
     bb_middle: float | None
     bb_lower: float | None
-    # Fibonacci
-    fib: FibLevels | None
     # Volume
     volume_ratio: float | None
-    # Weekly (주봉: 일봉 리샘플링)
+    # ATR
+    atr14: float | None
+    # Weekly MAs (주봉: 일봉 리샘플링)
+    ma5w: float | None              # 5주 MA ≈ 25거래일
     ma10w: float | None             # 10주 MA ≈ 50거래일
     ma20w: float | None             # 20주 MA ≈ 100거래일
     weekly_trend: str               # "정배열" | "역배열" | "횡보" | "데이터 부족"
     pct_from_52w_high: float | None
     pct_from_52w_low: float | None
+    # Monthly MAs (월봉: 일봉 리샘플링)
+    ma3m: float | None              # 3개월 MA ≈ 63거래일
+    ma6m: float | None              # 6개월 MA ≈ 126거래일
+    ma12m: float | None             # 12개월 MA ≈ 252거래일
+    monthly_trend: str              # "정배열" | "역배열" | "횡보" | "데이터 부족"
     # KR 수급 (US는 None)
     foreign_net_buy_5d: float | None    # 억원
     institution_net_buy_5d: float | None
@@ -113,21 +107,26 @@ def calculate_technicals(
 
     bb_upper, bb_middle, bb_lower = _bollinger(close, 20, 2.0)
 
-    fib = _fibonacci(current_price, week52_high, week52_low) if week52_high and week52_low else None
-
     volume_ratio = None
     if n >= 21:
         avg_vol = float(volume.iloc[-21:-1].mean())
         curr_vol = float(volume.iloc[-1])
         volume_ratio = round(curr_vol / avg_vol, 2) if avg_vol > 0 else None
 
+    atr14 = _atr(high, low, close, 14)
+
+    ma5w = _ma(close, 25)
     ma10w = _ma(close, 50)
     ma20w = _ma(close, 100)
-
     weekly_trend = _weekly_trend(ma10w, ma20w, current_price)
 
     pct_from_52w_high = round((current_price - week52_high) / week52_high * 100, 2) if week52_high else None
     pct_from_52w_low = round((current_price - week52_low) / week52_low * 100, 2) if week52_low else None
+
+    ma3m = _ma(close, 63)
+    ma6m = _ma(close, 126)
+    ma12m = _ma(close, 252)
+    monthly_trend = _monthly_trend(ma3m, ma6m, ma12m, current_price)
 
     return TechnicalsData(
         code=code, market=market,
@@ -137,12 +136,14 @@ def calculate_technicals(
         rsi14=rsi14,
         macd=macd_val, macd_signal=macd_sig, macd_hist=macd_hist,
         bb_upper=bb_upper, bb_middle=bb_middle, bb_lower=bb_lower,
-        fib=fib,
         volume_ratio=volume_ratio,
-        ma10w=ma10w, ma20w=ma20w,
+        atr14=atr14,
+        ma5w=ma5w, ma10w=ma10w, ma20w=ma20w,
         weekly_trend=weekly_trend,
         pct_from_52w_high=pct_from_52w_high,
         pct_from_52w_low=pct_from_52w_low,
+        ma3m=ma3m, ma6m=ma6m, ma12m=ma12m,
+        monthly_trend=monthly_trend,
         foreign_net_buy_5d=foreign_net,
         institution_net_buy_5d=institution_net,
     )
@@ -217,32 +218,16 @@ def _bollinger(series: pd.Series, period: int, std_mult: float
     return round(mid + std_mult * std, 2), round(mid, 2), round(mid - std_mult * std, 2)
 
 
-def _fibonacci(current: float, high: float, low: float) -> FibLevels:
-    rng = high - low
-    levels = {
-        "236": round(high - 0.236 * rng, 2),
-        "382": round(high - 0.382 * rng, 2),
-        "500": round(high - 0.500 * rng, 2),
-        "618": round(high - 0.618 * rng, 2),
-        "786": round(high - 0.786 * rng, 2),
-    }
-    sorted_vals = sorted(levels.values(), reverse=True)
-    zone = "하단 이하"
-    if current >= sorted_vals[0]:
-        zone = "23.6% 이상 (고점 근접)"
-    else:
-        keys = list(levels.keys())
-        for i in range(len(sorted_vals) - 1):
-            if current >= sorted_vals[i + 1]:
-                zone = f"{keys[i]}%~{keys[i+1]}% 구간"
-                break
-    return FibLevels(
-        high=high, low=low,
-        level_236=levels["236"], level_382=levels["382"],
-        level_500=levels["500"], level_618=levels["618"],
-        level_786=levels["786"],
-        current_zone=zone,
-    )
+def _atr(high: pd.Series, low: pd.Series, close: pd.Series, period: int = 14) -> float | None:
+    if len(close) < period + 1:
+        return None
+    prev_close = close.shift(1)
+    tr = pd.concat([
+        high - low,
+        (high - prev_close).abs(),
+        (low - prev_close).abs(),
+    ], axis=1).max(axis=1)
+    return round(float(tr.tail(period).mean()), 2)
 
 
 def _weekly_trend(ma10w: float | None, ma20w: float | None, current: float) -> str:
@@ -251,5 +236,15 @@ def _weekly_trend(ma10w: float | None, ma20w: float | None, current: float) -> s
     if ma10w > ma20w and current > ma10w:
         return "정배열"
     if ma10w < ma20w and current < ma10w:
+        return "역배열"
+    return "횡보"
+
+
+def _monthly_trend(ma3m: float | None, ma6m: float | None, ma12m: float | None, current: float) -> str:
+    if ma3m is None or ma6m is None or ma12m is None:
+        return "데이터 부족"
+    if ma3m > ma6m > ma12m and current > ma3m:
+        return "정배열"
+    if ma3m < ma6m < ma12m and current < ma3m:
         return "역배열"
     return "횡보"
