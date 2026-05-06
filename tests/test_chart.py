@@ -37,7 +37,9 @@ def test_chart_cleans_up_on_request(tmp_path):
 
 
 def test_chart_uses_ohlc(tmp_path):
-    """캔들스틱이 OHLC 데이터를 사용하는지 확인 — Open != Close여야 의미 있음."""
+    """캔들스틱 루프가 실제로 실행됨을 vlines 호출 횟수로 검증."""
+    from unittest.mock import patch
+    import matplotlib.axes
     rng = np.random.default_rng(42)
     n = 130
     closes = 100 + np.cumsum(rng.normal(0, 0.5, n))
@@ -50,6 +52,12 @@ def test_chart_uses_ohlc(tmp_path):
         "Volume": [1_000_000] * n,
     }, index=pd.date_range("2025-01-01", periods=n, freq="B"))
     tech = calculate_technicals(df, "TEST", "US")
-    chart_path = generate_chart("TEST", "US", df, tech, output_dir=tmp_path)
+
+    real_vlines = matplotlib.axes.Axes.vlines
+    with patch("matplotlib.axes.Axes.vlines", wraps=real_vlines) as mock_vlines:
+        chart_path = generate_chart("TEST", "US", df, tech, output_dir=tmp_path)
+
+    # chart_df = df.tail(126) → 126 candles → vlines called 126 times for wicks
+    assert mock_vlines.call_count == 126
     assert chart_path.exists()
     assert chart_path.stat().st_size > 5000
